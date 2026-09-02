@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - Mixamo Walking Animation</title>
+  <title>CYBER BANK INFILTRATION - Mixamo FBX Loader</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -149,6 +149,8 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 </head>
 <body>
   <div id="cors-banner" class="cors-warning hidden">
@@ -163,17 +165,17 @@
     </div>
     <div class="hud-box">
       <div class="hud-title">Active Animation Clip</div>
-      <div class="hud-val" style="color: #00ff66;" id="clip-status">Clip: Mixamo Walk</div>
+      <div class="hud-val" style="color: #00ff66;" id="clip-status">Clip: Mixamo FBX Walk Loaded</div>
     </div>
   </div>
 
   <!-- Interactive Animation Clip Selector Bar -->
   <div class="anim-bar">
     <button class="anim-btn" id="btn-idle" onclick="selectClip('idle')">[1] Idle</button>
-    <button class="anim-btn active" id="btn-walk" onclick="selectClip('walk')">[2] Mixamo Walk</button>
+    <button class="anim-btn active" id="btn-walk" onclick="selectClip('walk')">[2] Mixamo Walk FBX</button>
     <button class="anim-btn" id="btn-run" onclick="selectClip('run')">[3] Run Sprint</button>
     <button class="anim-btn" id="btn-jump" onclick="selectClip('jump')">[4] Jump Leap</button>
-    <button class="anim-btn" id="btn-hack" onclick="selectClip('hack')">[5] Mixamo Typing</button>
+    <button class="anim-btn" id="btn-hack" onclick="selectClip('hack')">[5] Mixamo Typing FBX</button>
   </div>
 
   <div class="interact-prompt hidden" id="interact-prompt">Press [E] to Hack Terminal</div>
@@ -258,7 +260,7 @@
       scene.add(cameraSpotlight);
       scene.add(cameraSpotlight.target);
 
-      // Build 3D Room & Load GLB Models
+      // Build 3D Room & Load GLB / FBX Models
       buildRoom();
       loadCustomGLBCharacter();
       loadPS1RetroComputerGLB();
@@ -279,7 +281,7 @@
       const btnMap = { idle: 'btn-idle', walk: 'btn-walk', run: 'btn-run', jump: 'btn-jump', hack: 'btn-hack' };
       if (btnMap[clipName]) document.getElementById(btnMap[clipName]).classList.add('active');
 
-      const labelMap = { idle: 'IDLE MOTION', walk: 'MIXAMO WALK', run: 'RUN SPRINT', jump: 'JUMP LEAP', hack: 'MIXAMO TYPING' };
+      const labelMap = { idle: 'IDLE MOTION', walk: 'MIXAMO WALK FBX', run: 'RUN SPRINT', jump: 'JUMP LEAP', hack: 'MIXAMO TYPING FBX' };
       document.getElementById('clip-status').innerText = `Clip: ${labelMap[clipName] || clipName.toUpperCase()}`;
 
       if (clipName === 'jump' && isGrounded && !isTerminalOpen) {
@@ -297,8 +299,8 @@
       playerGroup = new THREE.Group();
       scene.add(playerGroup);
 
-      const loader = new THREE.GLTFLoader();
-      loader.load('Assets/Models/low_poly_character.glb', function (gltf) {
+      const gltfLoader = new THREE.GLTFLoader();
+      gltfLoader.load('Assets/Models/low_poly_character.glb', function (gltf) {
         playerModel = gltf.scene;
 
         const box = new THREE.Box3().setFromObject(playerModel);
@@ -317,20 +319,31 @@
         playerModel.position.y = baseModelY;
         playerModel.position.z = -scaledCenter.z;
 
-        if (gltf.animations && gltf.animations.length > 0) {
-          mixer = new THREE.AnimationMixer(playerModel);
-          gltf.animations.forEach((clip, idx) => {
-            const name = clip.name.toLowerCase();
-            const action = mixer.clipAction(clip);
-            if (idx === 0) animActions['idle'] = action;
-            if (name.includes('walk')) animActions['walk'] = action;
-            if (name.includes('run')) animActions['run'] = action;
-            if (name.includes('jump')) animActions['jump'] = action;
-          });
-        }
+        mixer = new THREE.AnimationMixer(playerModel);
+
+        // Load Mixamo FBX Walking Animation Clip directly
+        const fbxLoader = new THREE.FBXLoader();
+        fbxLoader.load('Assets/Models/Walking.fbx', function (fbx) {
+          if (fbx.animations && fbx.animations.length > 0) {
+            const walkClip = fbx.animations[0];
+            animActions['walk'] = mixer.clipAction(walkClip);
+            console.log('Mixamo Walking.fbx animation loaded successfully!');
+            selectClip('walk');
+          }
+        }, undefined, function (err) {
+          console.error('Error loading Walking.fbx:', err);
+        });
+
+        // Load Mixamo FBX Typing Animation Clip directly
+        fbxLoader.load('Assets/Models/Using_A_Fax_Machine.fbx', function (fbx) {
+          if (fbx.animations && fbx.animations.length > 0) {
+            const hackClip = fbx.animations[0];
+            animActions['hack'] = mixer.clipAction(hackClip);
+            console.log('Mixamo Using_A_Fax_Machine.fbx animation loaded successfully!');
+          }
+        });
 
         playerGroup.add(playerModel);
-        selectClip('walk');
       }, undefined, function (error) {
         console.error('Error loading custom character model:', error);
       });
@@ -512,7 +525,7 @@
             if (currentActiveClip !== 'walk') selectClip('walk');
           }
 
-          // Mixamo Walking Stride
+          // FBX Motion fallback sway
           if (playerModel && isGrounded && !animActions['walk']) {
             const freq = isSprinting ? 1.8 : 1.2;
             playerModel.rotation.z = Math.sin(time * freq) * 0.025;
@@ -523,7 +536,7 @@
           if (currentActiveClip === 'walk' || currentActiveClip === 'run') {
             selectClip('idle');
           }
-          if (currentActiveClip === 'hack' && playerModel) {
+          if (currentActiveClip === 'hack' && playerModel && !animActions['hack']) {
             playerModel.rotation.x = 0.1;
             playerModel.position.y = baseModelY + Math.sin(time * 3) * 0.01;
           } else if (playerModel && isGrounded && !animActions['idle']) {
