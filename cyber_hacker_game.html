@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - 3D Hacker Game</title>
+  <title>CYBER BANK INFILTRATION - Animation Clip Selector</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -35,6 +35,34 @@
     }
     .hud-title { font-size: 0.7rem; color: #38bdf8; text-transform: uppercase; font-weight: bold; }
     .hud-val { font-size: 1.25rem; font-weight: bold; }
+
+    /* Animation Clip Selector Bar */
+    .anim-bar {
+      position: absolute;
+      bottom: 1.5rem;
+      left: 1.5rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 20;
+    }
+    .anim-btn {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #00ff66;
+      color: #00ff66;
+      padding: 0.6rem 1rem;
+      border-radius: 0.5rem;
+      font-family: inherit;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 255, 102, 0.2);
+      transition: all 0.2s;
+    }
+    .anim-btn:hover, .anim-btn.active {
+      background: #00ff66;
+      color: #050814;
+      box-shadow: 0 0 20px rgba(0, 255, 102, 0.8);
+      transform: translateY(-2px);
+    }
 
     .cors-warning {
       position: absolute;
@@ -101,7 +129,7 @@
     .hidden { display: none !important; }
     .interact-prompt {
       position: absolute;
-      bottom: 2rem;
+      bottom: 5rem;
       left: 50%;
       transform: translateX(-50%);
       background: rgba(0, 255, 102, 0.2);
@@ -131,12 +159,21 @@
   <div class="hud">
     <div class="hud-box">
       <div class="hud-title">Controls</div>
-      <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack Node</div>
+      <div class="hud-val" id="obj-text">WASD: Walk | Hotkeys 1-5: Animation Clips</div>
     </div>
     <div class="hud-box">
-      <div class="hud-title">3D Models</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">Custom 3D Models Active</div>
+      <div class="hud-title">Active Animation Clip</div>
+      <div class="hud-val" style="color: #00ff66;" id="clip-status">Clip: Idle Motion</div>
     </div>
+  </div>
+
+  <!-- Interactive Animation Clip Selector Bar -->
+  <div class="anim-bar">
+    <button class="anim-btn active" id="btn-idle" onclick="selectClip('idle')">[1] Idle</button>
+    <button class="anim-btn" id="btn-walk" onclick="selectClip('walk')">[2] Walk</button>
+    <button class="anim-btn" id="btn-run" onclick="selectClip('run')">[3] Run Sprint</button>
+    <button class="anim-btn" id="btn-jump" onclick="selectClip('jump')">[4] Jump Leap</button>
+    <button class="anim-btn" id="btn-hack" onclick="selectClip('hack')">[5] Hack Typing</button>
   </div>
 
   <div class="interact-prompt hidden" id="interact-prompt">Press [E] to Hack Terminal</div>
@@ -160,14 +197,14 @@
 
   <script>
     let scene, camera, renderer, playerGroup, playerModel, terminalGroup, vaultDoor, cameraSpotlight;
-    let mixer;
+    let mixer, animActions = {}, currentActiveClip = 'idle';
     let clock = new THREE.Clock();
     let keys = {};
     let isNearTerminal = false;
     let isTerminalOpen = false;
     let isVaultUnlocked = false;
 
-    // Jump & Physics
+    // Jump Physics
     let isGrounded = true;
     let velocityY = 0;
     const gravity = -20;
@@ -235,6 +272,26 @@
       animate();
     }
 
+    function selectClip(clipName) {
+      currentActiveClip = clipName;
+
+      document.querySelectorAll('.anim-btn').forEach(btn => btn.classList.remove('active'));
+      const btnMap = { idle: 'btn-idle', walk: 'btn-walk', run: 'btn-run', jump: 'btn-jump', hack: 'btn-hack' };
+      if (btnMap[clipName]) document.getElementById(btnMap[clipName]).classList.add('active');
+
+      document.getElementById('clip-status').innerText = `Clip: ${clipName.toUpperCase()}`;
+
+      if (clipName === 'jump' && isGrounded && !isTerminalOpen) {
+        velocityY = jumpPower;
+        isGrounded = false;
+      }
+
+      if (animActions[clipName] && mixer) {
+        Object.values(animActions).forEach(a => a.stop());
+        animActions[clipName].play();
+      }
+    }
+
     function loadCustomGLBCharacter() {
       playerGroup = new THREE.Group();
       scene.add(playerGroup);
@@ -259,14 +316,21 @@
         playerModel.position.y = baseModelY;
         playerModel.position.z = -scaledCenter.z;
 
+        // Parse & Bind Embedded Animation Clips
         if (gltf.animations && gltf.animations.length > 0) {
           mixer = new THREE.AnimationMixer(playerModel);
-          const action = mixer.clipAction(gltf.animations[0]);
-          if (action) action.play();
+          gltf.animations.forEach((clip, idx) => {
+            const name = clip.name.toLowerCase();
+            const action = mixer.clipAction(clip);
+            if (idx === 0) animActions['idle'] = action;
+            if (name.includes('walk')) animActions['walk'] = action;
+            if (name.includes('run')) animActions['run'] = action;
+            if (name.includes('jump')) animActions['jump'] = action;
+          });
         }
 
         playerGroup.add(playerModel);
-        document.getElementById('model-status').innerText = '3D Models Active!';
+        selectClip('idle');
       }, undefined, function (error) {
         console.error('Error loading custom character model:', error);
       });
@@ -330,14 +394,20 @@
     function handleGlobalKeys(e) {
       if (e.key.toLowerCase() === 'e' && isNearTerminal && !isTerminalOpen) {
         openTerminal();
+        selectClip('hack');
       }
       if (e.key === 'Escape' && isTerminalOpen) {
         closeTerminal();
+        selectClip('idle');
       }
       if ((e.key === ' ' || e.code === 'Space') && isGrounded && !isTerminalOpen) {
-        velocityY = jumpPower;
-        isGrounded = false;
+        selectClip('jump');
       }
+      if (e.key === '1') selectClip('idle');
+      if (e.key === '2') selectClip('walk');
+      if (e.key === '3') selectClip('run');
+      if (e.key === '4') selectClip('jump');
+      if (e.key === '5') selectClip('hack');
     }
 
     function openTerminal() {
@@ -410,15 +480,18 @@
             playerGroup.position.y = groundLevelY;
             velocityY = 0;
             isGrounded = true;
+            if (currentActiveClip === 'jump') selectClip('idle');
           }
         } else {
           playerGroup.position.y = groundLevelY;
         }
       }
 
-      // Player Movement & Collisions
+      // Player Movement & Motion Clips
       if (!isTerminalOpen && playerGroup) {
-        const speed = keys['c'] ? 0.04 : 0.11;
+        const isSprinting = currentActiveClip === 'run';
+        const speed = isSprinting ? 0.22 : (keys['c'] ? 0.04 : 0.11);
+
         let moving = false;
         let moveVec = new THREE.Vector3();
 
@@ -435,24 +508,26 @@
           const angle = Math.atan2(moveVec.x, moveVec.z);
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
 
-          if (playerModel && isGrounded) {
-            playerModel.rotation.z = Math.sin(time * 1.2) * 0.025;
-            playerModel.position.y = baseModelY + Math.abs(Math.sin(time * 1.2)) * 0.04;
-            playerModel.rotation.x = 0.05;
+          if (currentActiveClip !== 'run' && currentActiveClip !== 'jump') {
+            if (currentActiveClip !== 'walk') selectClip('walk');
+          }
+
+          // Natural gait stride
+          if (playerModel && isGrounded && !animActions['walk']) {
+            const freq = isSprinting ? 1.8 : 1.2;
+            playerModel.rotation.z = Math.sin(time * freq) * 0.03;
+            playerModel.position.y = baseModelY + Math.abs(Math.sin(time * freq)) * 0.05;
+            playerModel.rotation.x = isSprinting ? 0.12 : 0.05;
           }
         } else {
-          if (playerModel && isGrounded) {
+          if (currentActiveClip === 'walk' || currentActiveClip === 'run') {
+            selectClip('idle');
+          }
+          if (playerModel && isGrounded && !animActions['idle']) {
             playerModel.rotation.z = THREE.MathUtils.lerp(playerModel.rotation.z, 0, 0.1);
             playerModel.position.y = THREE.MathUtils.lerp(playerModel.position.y, baseModelY + Math.sin(time * 0.4) * 0.015, 0.1);
             playerModel.rotation.x = THREE.MathUtils.lerp(playerModel.rotation.x, 0, 0.1);
           }
-        }
-
-        // Crouch scaling
-        if (keys['c']) {
-          playerGroup.scale.y = THREE.MathUtils.lerp(playerGroup.scale.y, 0.6, 0.2);
-        } else {
-          playerGroup.scale.y = THREE.MathUtils.lerp(playerGroup.scale.y, 1.0, 0.2);
         }
 
         // Player bounds
