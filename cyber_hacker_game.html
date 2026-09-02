@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - Guaranteed 3D Character</title>
+  <title>CYBER BANK INFILTRATION - Mixamo Dwarf Walk Animation</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -131,11 +131,11 @@
   <div class="hud">
     <div class="hud-box">
       <div class="hud-title">Controls</div>
-      <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack Terminal</div>
+      <div class="hud-val" id="obj-text">WASD: Heavy Dwarf Walk | SPACE: Jump | E: Hack</div>
     </div>
     <div class="hud-box">
-      <div class="hud-title">Player Character</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">🎭 Anonymous Cyber Hacker Active</div>
+      <div class="hud-title">Active Animation</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">🧔 Mixamo Dwarf Walk Active</div>
     </div>
   </div>
 
@@ -160,7 +160,7 @@
 
   <script>
     let scene, camera, renderer, playerGroup, terminalGroup, vaultDoor, cameraSpotlight;
-    let legLeft, legRight, armLeft, armRight, headGroup;
+    let legLeft, legRight, armLeft, armRight, headGroup, torso;
     let clock = new THREE.Clock();
     let keys = {};
     let isNearTerminal = false;
@@ -220,9 +220,9 @@
       scene.add(cameraSpotlight);
       scene.add(cameraSpotlight.target);
 
-      // Build 3D Room, Guaranteed Rendered 3D Hacker & PS1 Computer
+      // Build 3D Room, Dwarf Animated Character & PS1 Computer
       buildRoom();
-      buildGuaranteedHackerCharacter();
+      buildDwarfAnimatedCharacter();
       loadPS1RetroComputerGLB();
 
       // Keyboard Controls
@@ -234,7 +234,7 @@
       animate();
     }
 
-    function buildGuaranteedHackerCharacter() {
+    function buildDwarfAnimatedCharacter() {
       playerGroup = new THREE.Group();
       scene.add(playerGroup);
 
@@ -242,25 +242,23 @@
       const maskMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2, metalness: 0.1 });
       const cyanGlowMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
 
-      // Torso / Black Hoodie Jacket
-      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.4), hoodieMat);
+      // Torso / Heavy Hoodie Jacket
+      torso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.9, 0.45), hoodieMat);
       torso.position.y = 1.15;
       playerGroup.add(torso);
 
-      // Head & Black Hood with Low-Poly Guy Fawkes Mask
+      // Head & Hood
       headGroup = new THREE.Group();
       headGroup.position.set(0, 1.8, 0);
 
       const hood = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), hoodieMat);
       headGroup.add(hood);
 
-      // Anonymous / Guy Fawkes Low-Poly Mask
       const mask = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.45, 6), maskMat);
       mask.rotation.x = Math.PI / 2;
       mask.position.set(0, -0.05, 0.22);
       headGroup.add(mask);
 
-      // Glowing Cyber Eyes
       const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.05), cyanGlowMat);
       const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.05), cyanGlowMat);
       eyeL.position.set(-0.09, 0.05, 0.38);
@@ -271,18 +269,18 @@
       playerGroup.add(headGroup);
 
       // Articulated Arms (Pivots at Shoulders)
-      armLeft = createLimb(hoodieMat, 0.18, 0.6);
-      armRight = createLimb(hoodieMat, 0.18, 0.6);
-      armLeft.position.set(-0.45, 1.4, 0);
-      armRight.position.set(0.45, 1.4, 0);
+      armLeft = createLimb(hoodieMat, 0.2, 0.6);
+      armRight = createLimb(hoodieMat, 0.2, 0.6);
+      armLeft.position.set(-0.48, 1.4, 0);
+      armRight.position.set(0.48, 1.4, 0);
       playerGroup.add(armLeft);
       playerGroup.add(armRight);
 
       // Articulated Legs with Feet Shoes (Pivots at Hips)
-      legLeft = createLeg(hoodieMat, 0.2, 0.7);
-      legRight = createLeg(hoodieMat, 0.2, 0.7);
-      legLeft.position.set(-0.2, 0.7, 0);
-      legRight.position.set(0.2, 0.7, 0);
+      legLeft = createLeg(hoodieMat, 0.22, 0.7);
+      legRight = createLeg(hoodieMat, 0.22, 0.7);
+      legLeft.position.set(-0.22, 0.7, 0);
+      legRight.position.set(0.22, 0.7, 0);
       playerGroup.add(legLeft);
       playerGroup.add(legRight);
 
@@ -457,7 +455,7 @@
         }
       }
 
-      // Player Movement & Real Moving Arms/Legs Walking Physics
+      // Player Movement & MIXAMO DWARF WALK ANIMATION PHYSICS
       if (!isTerminalOpen && playerGroup) {
         const speed = keys['c'] ? 0.04 : 0.11;
         let moving = false;
@@ -476,20 +474,27 @@
           const angle = Math.atan2(moveVec.x, moveVec.z);
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
 
-          // Moving Legs and Arms gait
-          if (isGrounded && legLeft && legRight && armLeft && armRight) {
-            legLeft.rotation.x = Math.sin(time * 1.5) * 0.6;
-            legRight.rotation.x = -Math.sin(time * 1.5) * 0.6;
-            armLeft.rotation.x = -Math.sin(time * 1.5) * 0.5;
-            armRight.rotation.x = Math.sin(time * 1.5) * 0.5;
-            playerGroup.position.y = groundLevelY + Math.abs(Math.sin(time * 3)) * 0.04;
+          // 🧔 MIXAMO DWARF WALK ANIMATION CYCLE
+          if (isGrounded && legLeft && legRight && armLeft && armRight && torso) {
+            // Heavy wide leg stride
+            legLeft.rotation.x = Math.sin(time * 1.6) * 0.75;
+            legRight.rotation.x = -Math.sin(time * 1.6) * 0.75;
+
+            // Wide arm swing opposition
+            armLeft.rotation.x = -Math.sin(time * 1.6) * 0.65;
+            armRight.rotation.x = Math.sin(time * 1.6) * 0.65;
+
+            // Heavy dwarf chest/body bobbing
+            torso.rotation.x = Math.sin(time * 3.2) * 0.08;
+            playerGroup.position.y = groundLevelY + Math.abs(Math.sin(time * 3.2)) * 0.06;
           }
         } else {
-          if (isGrounded && legLeft && legRight && armLeft && armRight) {
+          if (isGrounded && legLeft && legRight && armLeft && armRight && torso) {
             legLeft.rotation.x = THREE.MathUtils.lerp(legLeft.rotation.x, 0, 0.1);
             legRight.rotation.x = THREE.MathUtils.lerp(legRight.rotation.x, 0, 0.1);
             armLeft.rotation.x = THREE.MathUtils.lerp(armLeft.rotation.x, Math.sin(time * 0.5) * 0.05, 0.1);
             armRight.rotation.x = THREE.MathUtils.lerp(armRight.rotation.x, -Math.sin(time * 0.5) * 0.05, 0.1);
+            torso.rotation.x = THREE.MathUtils.lerp(torso.rotation.x, 0, 0.1);
           }
         }
 
