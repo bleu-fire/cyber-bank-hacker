@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - Custom 3D Models</title>
+  <title>CYBER BANK INFILTRATION - 3D Anime Character & PS1 Computer</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -35,6 +35,22 @@
     }
     .hud-title { font-size: 0.7rem; color: #38bdf8; text-transform: uppercase; font-weight: bold; }
     .hud-val { font-size: 1.25rem; font-weight: bold; }
+
+    .cors-warning {
+      position: absolute;
+      top: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(239, 68, 68, 0.9);
+      color: #ffffff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: bold;
+      z-index: 50;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+    }
+    .cors-warning a { color: #fef08a; text-decoration: underline; }
     
     /* Terminal Prompt Modal */
     .terminal-modal {
@@ -107,14 +123,19 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
+  <div id="cors-banner" class="cors-warning hidden">
+    ⚠️ <b>Local File Security Warning</b>: Open in server mode: 
+    <a href="http://localhost:8080/cyber_hacker_game.html" target="_blank">http://localhost:8080/cyber_hacker_game.html</a>
+  </div>
+
   <div class="hud">
     <div class="hud-box">
-      <div class="hud-title">Objective</div>
-      <div class="hud-val" id="obj-text">Sneak Character to PSX Retro Terminal & Press [E]</div>
+      <div class="hud-title">Controls</div>
+      <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack Node</div>
     </div>
     <div class="hud-box">
-      <div class="hud-title">3D Models</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">Custom 3D Models Loaded</div>
+      <div class="hud-title">3D Models & Animations</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">Loading PS1 Computer & 3D Character...</div>
     </div>
   </div>
 
@@ -122,9 +143,9 @@
 
   <!-- Hacker Terminal Screen -->
   <div class="terminal-modal hidden" id="terminal-modal">
-    <div class="terminal-header">=== RETRO PSX FIREWALL BREACH ===</div>
+    <div class="terminal-header">=== PS1 RETRO COMPUTER STATION ===</div>
     <div class="terminal-log" id="terminal-log">
-      [CONNECTED TO PSX_TERMINAL_NODE]<br>
+      [CONNECTED TO PS1_STATION_NODE]<br>
       FIREWALL: ACTIVE (AES-256)<br>
       HINT: Passcode anagram is 'RBCYEEISHT'<br><br>
       Type passcode to breach vault doors:
@@ -138,13 +159,26 @@
   <div id="game-canvas"></div>
 
   <script>
-    let scene, camera, renderer, playerGroup, terminalGroup, vaultDoor, cameraSpotlight;
+    let scene, camera, renderer, playerGroup, playerModel, terminalGroup, vaultDoor, cameraSpotlight;
+    let mixer, walkAction, jumpAction, idleAction;
+    let clock = new THREE.Clock();
     let keys = {};
     let isNearTerminal = false;
     let isTerminalOpen = false;
     let isVaultUnlocked = false;
 
+    // Jump Physics
+    let isGrounded = true;
+    let velocityY = 0;
+    const gravity = -20;
+    const jumpPower = 8.5;
+
     function init() {
+      // Check CORS / File Protocol Warning
+      if (window.location.protocol === 'file:') {
+        document.getElementById('cors-banner').classList.remove('hidden');
+      }
+
       const container = document.getElementById('game-canvas');
 
       // Scene
@@ -183,7 +217,7 @@
       // Build 3D Room & Load Custom GLB Models
       buildRoom();
       loadCustomGLBCharacter();
-      loadRetroMonitorGLB();
+      loadPS1RetroComputerGLB();
 
       // Keyboard Controls
       window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
@@ -200,23 +234,34 @@
 
       const loader = new THREE.GLTFLoader();
       loader.load('Assets/Models/low_poly_character.glb', function (gltf) {
-        const model = gltf.scene;
+        playerModel = gltf.scene;
 
-        const box = new THREE.Box3().setFromObject(model);
+        const box = new THREE.Box3().setFromObject(playerModel);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
-        model.position.x = -center.x;
-        model.position.y = -box.min.y;
-        model.position.z = -center.z;
+        playerModel.position.x = -center.x;
+        playerModel.position.y = -box.min.y;
+        playerModel.position.z = -center.z;
 
         const maxDim = Math.max(size.x, size.y, size.z);
         if (maxDim > 0) {
           const targetScale = 2.0 / maxDim;
-          model.scale.set(targetScale, targetScale, targetScale);
+          playerModel.scale.set(targetScale, targetScale, targetScale);
         }
 
-        playerGroup.add(model);
+        // Setup Animations if embedded in GLTF
+        if (gltf.animations && gltf.animations.length > 0) {
+          mixer = new THREE.AnimationMixer(playerModel);
+          gltf.animations.forEach((clip) => {
+            console.log('Found Animation Clip:', clip.name);
+          });
+          walkAction = mixer.clipAction(gltf.animations[0]);
+          if (walkAction) walkAction.play();
+        }
+
+        playerGroup.add(playerModel);
+        document.getElementById('model-status').innerText = '3D Character & Animations Loaded!';
       }, undefined, function (error) {
         console.error('Error loading custom character model:', error);
       });
@@ -224,12 +269,12 @@
       playerGroup.position.set(0, 0, 4);
     }
 
-    function loadRetroMonitorGLB() {
+    function loadPS1RetroComputerGLB() {
       terminalGroup = new THREE.Group();
       scene.add(terminalGroup);
 
       const loader = new THREE.GLTFLoader();
-      loader.load('Assets/Models/retro_monitor_pc_tower.glb', function (gltf) {
+      loader.load('Assets/Models/ps1_retro_computer.glb', function (gltf) {
         const model = gltf.scene;
 
         const box = new THREE.Box3().setFromObject(model);
@@ -247,9 +292,9 @@
         }
 
         terminalGroup.add(model);
-        console.log('Retro PSX Monitor PC Tower loaded successfully!');
+        console.log('PS1 Retro Computer Station loaded successfully!');
       }, undefined, function (error) {
-        console.error('Error loading retro monitor model:', error);
+        console.error('Error loading PS1 retro computer model:', error);
       });
 
       terminalGroup.position.set(-6, 0, -6);
@@ -283,6 +328,11 @@
       }
       if (e.key === 'Escape' && isTerminalOpen) {
         closeTerminal();
+      }
+      // Jump Control (Spacebar)
+      if ((e.key === ' ' || e.code === 'Space') && isGrounded && !isTerminalOpen) {
+        velocityY = jumpPower;
+        isGrounded = false;
       }
     }
 
@@ -324,7 +374,24 @@
     function animate() {
       requestAnimationFrame(animate);
 
-      // Player Movement
+      const delta = clock.getDelta();
+      if (mixer) mixer.update(delta);
+
+      // Apply Gravity & Jump Physics
+      if (playerGroup) {
+        if (!isGrounded) {
+          playerGroup.position.y += velocityY * delta;
+          velocityY += gravity * delta;
+
+          if (playerGroup.position.y <= 0) {
+            playerGroup.position.y = 0;
+            velocityY = 0;
+            isGrounded = true;
+          }
+        }
+      }
+
+      // Player Movement & Walking Animation
       if (!isTerminalOpen && playerGroup) {
         const speed = keys['c'] ? 0.05 : 0.12;
         let moving = false;
@@ -339,6 +406,17 @@
           playerGroup.position.add(moveVec);
           const angle = Math.atan2(moveVec.x, moveVec.z);
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.15);
+
+          // Walking 3D Bobbing Sway Animation
+          if (playerModel && isGrounded) {
+            playerModel.rotation.z = Math.sin(Date.now() * 0.015) * 0.08;
+            playerModel.position.y = Math.abs(Math.sin(Date.now() * 0.015)) * 0.1;
+          }
+        } else {
+          if (playerModel && isGrounded) {
+            playerModel.rotation.z = THREE.MathUtils.lerp(playerModel.rotation.z, 0, 0.1);
+            playerModel.position.y = THREE.MathUtils.lerp(playerModel.position.y, 0, 0.1);
+          }
         }
 
         // Crouch scaling
@@ -357,7 +435,7 @@
       const sweepAngle = Math.sin(Date.now() * 0.002) * 6;
       cameraSpotlight.target.position.x = sweepAngle;
 
-      // Check distance to PSX Retro Terminal (-6, 0, -6)
+      // Check distance to PSX Retro Computer (-6, 0, -6)
       if (playerGroup) {
         const distToTerminal = playerGroup.position.distanceTo(new THREE.Vector3(-6, 0, -6));
         isNearTerminal = distToTerminal < 3.0;
