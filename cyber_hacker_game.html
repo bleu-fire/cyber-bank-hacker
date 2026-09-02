@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - 3D Anime Character & PS1 Computer</title>
+  <title>CYBER BANK INFILTRATION - Rock & Roll Swagger Animation</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -131,11 +131,11 @@
   <div class="hud">
     <div class="hud-box">
       <div class="hud-title">Controls</div>
-      <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack Node</div>
+      <div class="hud-val" id="obj-text">WASD: Rock & Roll Walk | SPACE: Flip Jump | E: Hack</div>
     </div>
     <div class="hud-box">
-      <div class="hud-title">3D Models & Animations</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">Loading PS1 Computer & 3D Character...</div>
+      <div class="hud-title">Animation Mode</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">🎸 Rock & Roll Swagger Active</div>
     </div>
   </div>
 
@@ -160,21 +160,22 @@
 
   <script>
     let scene, camera, renderer, playerGroup, playerModel, terminalGroup, vaultDoor, cameraSpotlight;
-    let mixer, walkAction, jumpAction, idleAction;
+    let mixer;
     let clock = new THREE.Clock();
     let keys = {};
     let isNearTerminal = false;
     let isTerminalOpen = false;
     let isVaultUnlocked = false;
 
-    // Jump Physics
+    // Jump & Physics
     let isGrounded = true;
     let velocityY = 0;
-    const gravity = -20;
-    const jumpPower = 8.5;
+    const gravity = -22;
+    const jumpPower = 9.5;
+    const groundLevelY = 0.0;
+    let baseModelY = 0;
 
     function init() {
-      // Check CORS / File Protocol Warning
       if (window.location.protocol === 'file:') {
         document.getElementById('cors-banner').classList.remove('hidden');
       }
@@ -240,33 +241,31 @@
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
-        playerModel.position.x = -center.x;
-        playerModel.position.y = -box.min.y;
-        playerModel.position.z = -center.z;
-
         const maxDim = Math.max(size.x, size.y, size.z);
-        if (maxDim > 0) {
-          const targetScale = 2.0 / maxDim;
-          playerModel.scale.set(targetScale, targetScale, targetScale);
-        }
+        const targetScale = maxDim > 0 ? (2.0 / maxDim) : 1.0;
+        playerModel.scale.set(targetScale, targetScale, targetScale);
 
-        // Setup Animations if embedded in GLTF
+        const scaledBox = new THREE.Box3().setFromObject(playerModel);
+        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+
+        playerModel.position.x = -scaledCenter.x;
+        baseModelY = -scaledBox.min.y;
+        playerModel.position.y = baseModelY;
+        playerModel.position.z = -scaledCenter.z;
+
         if (gltf.animations && gltf.animations.length > 0) {
           mixer = new THREE.AnimationMixer(playerModel);
-          gltf.animations.forEach((clip) => {
-            console.log('Found Animation Clip:', clip.name);
-          });
-          walkAction = mixer.clipAction(gltf.animations[0]);
-          if (walkAction) walkAction.play();
+          const action = mixer.clipAction(gltf.animations[0]);
+          if (action) action.play();
         }
 
         playerGroup.add(playerModel);
-        document.getElementById('model-status').innerText = '3D Character & Animations Loaded!';
+        document.getElementById('model-status').innerText = '🎸 Rock & Roll Swagger Active!';
       }, undefined, function (error) {
         console.error('Error loading custom character model:', error);
       });
 
-      playerGroup.position.set(0, 0, 4);
+      playerGroup.position.set(0, groundLevelY, 4);
     }
 
     function loadPS1RetroComputerGLB() {
@@ -278,26 +277,25 @@
         const model = gltf.scene;
 
         const box = new THREE.Box3().setFromObject(model);
-        const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
-        model.position.x = -center.x;
-        model.position.y = -box.min.y;
-        model.position.z = -center.z;
-
         const maxDim = Math.max(size.x, size.y, size.z);
-        if (maxDim > 0) {
-          const targetScale = 2.2 / maxDim;
-          model.scale.set(targetScale, targetScale, targetScale);
-        }
+        const targetScale = maxDim > 0 ? (2.2 / maxDim) : 1.0;
+        model.scale.set(targetScale, targetScale, targetScale);
+
+        const scaledBox = new THREE.Box3().setFromObject(model);
+        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+
+        model.position.x = -scaledCenter.x;
+        model.position.y = -scaledBox.min.y;
+        model.position.z = -scaledCenter.z;
 
         terminalGroup.add(model);
-        console.log('PS1 Retro Computer Station loaded successfully!');
       }, undefined, function (error) {
         console.error('Error loading PS1 retro computer model:', error);
       });
 
-      terminalGroup.position.set(-6, 0, -6);
+      terminalGroup.position.set(-6, groundLevelY, -6);
       terminalGroup.rotation.y = Math.PI / 4;
     }
 
@@ -306,6 +304,7 @@
       const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
       const floor = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), floorMat);
       floor.rotation.x = -Math.PI / 2;
+      floor.position.y = 0;
       scene.add(floor);
 
       // Back Wall
@@ -329,7 +328,6 @@
       if (e.key === 'Escape' && isTerminalOpen) {
         closeTerminal();
       }
-      // Jump Control (Spacebar)
       if ((e.key === ' ' || e.code === 'Space') && isGrounded && !isTerminalOpen) {
         velocityY = jumpPower;
         isGrounded = false;
@@ -375,25 +373,35 @@
       requestAnimationFrame(animate);
 
       const delta = clock.getDelta();
+      const time = Date.now() * 0.01;
       if (mixer) mixer.update(delta);
 
-      // Apply Gravity & Jump Physics
+      // Apply Gravity & Ground Physics
       if (playerGroup) {
         if (!isGrounded) {
           playerGroup.position.y += velocityY * delta;
           velocityY += gravity * delta;
 
-          if (playerGroup.position.y <= 0) {
-            playerGroup.position.y = 0;
+          // Mid-air Rock & Roll flip spin!
+          if (playerModel) {
+            playerModel.rotation.x += 0.2;
+          }
+
+          if (playerGroup.position.y <= groundLevelY) {
+            playerGroup.position.y = groundLevelY;
             velocityY = 0;
             isGrounded = true;
+            if (playerModel) playerModel.rotation.x = 0;
           }
+        } else {
+          playerGroup.position.y = groundLevelY;
+          if (playerModel) playerModel.rotation.x = 0;
         }
       }
 
-      // Player Movement & Walking Animation
+      // Player Movement & Rock & Roll Swagger Walk Animation
       if (!isTerminalOpen && playerGroup) {
-        const speed = keys['c'] ? 0.05 : 0.12;
+        const speed = keys['c'] ? 0.05 : 0.14;
         let moving = false;
         let moveVec = new THREE.Vector3();
 
@@ -405,17 +413,23 @@
         if (moving) {
           playerGroup.position.add(moveVec);
           const angle = Math.atan2(moveVec.x, moveVec.z);
-          playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.15);
+          playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
 
-          // Walking 3D Bobbing Sway Animation
+          // 🎸 ROCK & ROLL SWAGGER WALK ANIMATION
           if (playerModel && isGrounded) {
-            playerModel.rotation.z = Math.sin(Date.now() * 0.015) * 0.08;
-            playerModel.position.y = Math.abs(Math.sin(Date.now() * 0.015)) * 0.1;
+            // Side-to-side confident shoulder rock
+            playerModel.rotation.z = Math.sin(time * 1.4) * 0.18;
+            // Up & down heavy stride bounce
+            playerModel.position.y = baseModelY + Math.abs(Math.sin(time * 1.4)) * 0.15;
+            // Rocking forward/backward tilt
+            playerModel.rotation.x = Math.cos(time * 1.4) * 0.08;
           }
         } else {
+          // 🎸 ROCK & ROLL IDLE BOUNCE & HEAD BOB
           if (playerModel && isGrounded) {
-            playerModel.rotation.z = THREE.MathUtils.lerp(playerModel.rotation.z, 0, 0.1);
-            playerModel.position.y = THREE.MathUtils.lerp(playerModel.position.y, 0, 0.1);
+            playerModel.rotation.z = THREE.MathUtils.lerp(playerModel.rotation.z, Math.sin(time * 0.5) * 0.04, 0.1);
+            playerModel.position.y = THREE.MathUtils.lerp(playerModel.position.y, baseModelY + Math.sin(time * 0.8) * 0.05, 0.1);
+            playerModel.rotation.x = THREE.MathUtils.lerp(playerModel.rotation.x, 0, 0.1);
           }
         }
 
