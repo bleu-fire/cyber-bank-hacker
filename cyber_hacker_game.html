@@ -205,7 +205,7 @@
       container.appendChild(renderer.domElement);
 
       // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 2.2);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
       scene.add(ambientLight);
 
       const mainLight = new THREE.DirectionalLight(0x38bdf8, 2);
@@ -245,11 +245,26 @@
       fbxLoader.load('Assets/Models/MixamoWomanWalk.fbx', function (fbx) {
         playerModel = fbx;
 
+        // Traverse & Apply Solid Materials to all FBX meshes
+        playerModel.traverse(function (child) {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            child.material = new THREE.MeshStandardMaterial({
+              color: 0x38bdf8,
+              roughness: 0.4,
+              metalness: 0.2,
+              side: THREE.DoubleSide
+            });
+          }
+        });
+
+        // Precise Bounding Box Normalization
         const box = new THREE.Box3().setFromObject(playerModel);
         const size = box.getSize(new THREE.Vector3());
 
         const maxDim = Math.max(size.x, size.y, size.z);
-        const targetScale = maxDim > 0 ? (2.0 / maxDim) : 0.015;
+        const targetScale = maxDim > 0 ? (2.0 / maxDim) : 0.012;
         playerModel.scale.set(targetScale, targetScale, targetScale);
 
         const scaledBox = new THREE.Box3().setFromObject(playerModel);
@@ -259,16 +274,6 @@
         baseModelY = -scaledBox.min.y;
         playerModel.position.y = baseModelY;
         playerModel.position.z = -scaledCenter.z;
-
-        playerModel.traverse(function (child) {
-          if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-            if (child.material) {
-              child.material.side = THREE.DoubleSide;
-            }
-          }
-        });
 
         // Initialize Mixamo Skeletal Animation Mixer
         if (fbx.animations && fbx.animations.length > 0) {
@@ -450,7 +455,7 @@
 
           if (walkAction) walkAction.timeScale = 1.0;
         } else {
-          if (walkAction) walkAction.timeScale = 0.0; // Pause animation frame when standing still!
+          if (walkAction) walkAction.timeScale = 0.0;
         }
 
         // Crouch scaling
