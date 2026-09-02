@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - Woman Hacker Character</title>
+  <title>CYBER BANK INFILTRATION - Mixamo Rigged Animated Character</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -121,8 +121,8 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 </head>
 <body>
   <div id="cors-banner" class="cors-warning hidden">
@@ -137,7 +137,7 @@
     </div>
     <div class="hud-box">
       <div class="hud-title">Player Character</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">👩 Woman Hacker Model Active</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">🏃 Mixamo Animated FBX Active</div>
     </div>
   </div>
 
@@ -162,6 +162,7 @@
 
   <script>
     let scene, camera, renderer, playerGroup, playerModel, terminalGroup, vaultDoor, cameraSpotlight;
+    let mixer, walkAction;
     let clock = new THREE.Clock();
     let keys = {};
     let isNearTerminal = false;
@@ -204,7 +205,7 @@
       container.appendChild(renderer.domElement);
 
       // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 2.2);
       scene.add(ambientLight);
 
       const mainLight = new THREE.DirectionalLight(0x38bdf8, 2);
@@ -222,9 +223,9 @@
       scene.add(cameraSpotlight);
       scene.add(cameraSpotlight.target);
 
-      // Build 3D Room & Load Custom Woman Character & PS1 Computer
+      // Build 3D Room & Load Mixamo FBX Animated Character
       buildRoom();
-      loadWomanCharacterOBJ();
+      loadMixamoAnimatedFBXCharacter();
       loadPS1RetroComputerGLB();
 
       // Keyboard Controls
@@ -236,53 +237,51 @@
       animate();
     }
 
-    function loadWomanCharacterOBJ() {
+    function loadMixamoAnimatedFBXCharacter() {
       playerGroup = new THREE.Group();
       scene.add(playerGroup);
 
-      const mtlLoader = new THREE.MTLLoader();
-      mtlLoader.setPath('Assets/Models/woman/woman/');
-      mtlLoader.load('woman.mtl', function (materials) {
-        materials.preload();
+      const fbxLoader = new THREE.FBXLoader();
+      fbxLoader.load('Assets/Models/MixamoWomanWalk.fbx', function (fbx) {
+        playerModel = fbx;
 
-        const objLoader = new THREE.OBJLoader();
-        objLoader.setMaterials(materials);
-        objLoader.setPath('Assets/Models/woman/woman/');
-        objLoader.load('woman.obj', function (obj) {
-          playerModel = obj;
+        const box = new THREE.Box3().setFromObject(playerModel);
+        const size = box.getSize(new THREE.Vector3());
 
-          // Texture Map
-          const textureLoader = new THREE.TextureLoader();
-          textureLoader.load('Assets/Models/woman/woman/woman_Packed0_Diffuse.png', function(tex) {
-            playerModel.traverse(function(child) {
-              if (child.isMesh) {
-                child.material.map = tex;
-                child.material.needsUpdate = true;
-              }
-            });
-          });
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const targetScale = maxDim > 0 ? (2.0 / maxDim) : 0.015;
+        playerModel.scale.set(targetScale, targetScale, targetScale);
 
-          const box = new THREE.Box3().setFromObject(playerModel);
-          const center = box.getCenter(new THREE.Vector3());
-          const size = box.getSize(new THREE.Vector3());
+        const scaledBox = new THREE.Box3().setFromObject(playerModel);
+        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
 
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const targetScale = maxDim > 0 ? (2.0 / maxDim) : 1.0;
-          playerModel.scale.set(targetScale, targetScale, targetScale);
+        playerModel.position.x = -scaledCenter.x;
+        baseModelY = -scaledBox.min.y;
+        playerModel.position.y = baseModelY;
+        playerModel.position.z = -scaledCenter.z;
 
-          const scaledBox = new THREE.Box3().setFromObject(playerModel);
-          const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
-
-          playerModel.position.x = -scaledCenter.x;
-          baseModelY = -scaledBox.min.y;
-          playerModel.position.y = baseModelY;
-          playerModel.position.z = -scaledCenter.z;
-
-          playerGroup.add(playerModel);
-          document.getElementById('model-status').innerText = '👩 Woman Character Active!';
-        }, undefined, function (error) {
-          console.error('Error loading woman OBJ model:', error);
+        playerModel.traverse(function (child) {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            if (child.material) {
+              child.material.side = THREE.DoubleSide;
+            }
+          }
         });
+
+        // Initialize Mixamo Skeletal Animation Mixer
+        if (fbx.animations && fbx.animations.length > 0) {
+          mixer = new THREE.AnimationMixer(playerModel);
+          walkAction = mixer.clipAction(fbx.animations[0]);
+          walkAction.play();
+          console.log('Mixamo Walking FBX mesh & animation loaded successfully!');
+        }
+
+        playerGroup.add(playerModel);
+        document.getElementById('model-status').innerText = '🏃 Mixamo Animated Character Active!';
+      }, undefined, function (error) {
+        console.error('Error loading Mixamo FBX character:', error);
       });
 
       playerGroup.position.set(0, groundLevelY, 4);
@@ -411,7 +410,7 @@
       requestAnimationFrame(animate);
 
       const delta = clock.getDelta();
-      const time = Date.now() * 0.008;
+      if (mixer) mixer.update(delta);
 
       // Apply Gravity & Ground Physics
       if (playerGroup) {
@@ -429,7 +428,7 @@
         }
       }
 
-      // Player Movement & Natural Gait Physics
+      // Player Movement & Mixamo Animation Speed Control
       if (!isTerminalOpen && playerGroup) {
         const speed = keys['c'] ? 0.04 : 0.11;
 
@@ -449,17 +448,9 @@
           const angle = Math.atan2(moveVec.x, moveVec.z);
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
 
-          if (playerModel && isGrounded) {
-            playerModel.rotation.z = Math.sin(time * 1.2) * 0.025;
-            playerModel.position.y = baseModelY + Math.abs(Math.sin(time * 1.2)) * 0.04;
-            playerModel.rotation.x = 0.05;
-          }
+          if (walkAction) walkAction.timeScale = 1.0;
         } else {
-          if (playerModel && isGrounded) {
-            playerModel.rotation.z = THREE.MathUtils.lerp(playerModel.rotation.z, 0, 0.1);
-            playerModel.position.y = THREE.MathUtils.lerp(playerModel.position.y, baseModelY + Math.sin(time * 0.4) * 0.015, 0.1);
-            playerModel.rotation.x = THREE.MathUtils.lerp(playerModel.rotation.x, 0, 0.1);
-          }
+          if (walkAction) walkAction.timeScale = 0.0; // Pause animation frame when standing still!
         }
 
         // Crouch scaling
