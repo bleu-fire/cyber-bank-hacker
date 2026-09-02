@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - 3D Rigged Skeleton Character</title>
+  <title>CYBER BANK INFILTRATION - Woman Hacker Character</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -121,6 +121,8 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
 </head>
 <body>
   <div id="cors-banner" class="cors-warning hidden">
@@ -134,8 +136,8 @@
       <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack Terminal</div>
     </div>
     <div class="hud-box">
-      <div class="hud-title">3D Rigged Model</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">🦴 3D Humanoid Skeleton Rigged</div>
+      <div class="hud-title">Player Character</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">👩 Woman Hacker Model Active</div>
     </div>
   </div>
 
@@ -220,9 +222,9 @@
       scene.add(cameraSpotlight);
       scene.add(cameraSpotlight.target);
 
-      // Build 3D Room & Load Custom GLB Models
+      // Build 3D Room & Load Custom Woman Character & PS1 Computer
       buildRoom();
-      loadCustomRiggedGLBCharacter();
+      loadWomanCharacterOBJ();
       loadPS1RetroComputerGLB();
 
       // Keyboard Controls
@@ -234,35 +236,53 @@
       animate();
     }
 
-    function loadCustomRiggedGLBCharacter() {
+    function loadWomanCharacterOBJ() {
       playerGroup = new THREE.Group();
       scene.add(playerGroup);
 
-      const loader = new THREE.GLTFLoader();
-      loader.load('Assets/Models/low_poly_character_rigged.glb', function (gltf) {
-        playerModel = gltf.scene;
+      const mtlLoader = new THREE.MTLLoader();
+      mtlLoader.setPath('Assets/Models/woman/woman/');
+      mtlLoader.load('woman.mtl', function (materials) {
+        materials.preload();
 
-        const box = new THREE.Box3().setFromObject(playerModel);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
+        const objLoader = new THREE.OBJLoader();
+        objLoader.setMaterials(materials);
+        objLoader.setPath('Assets/Models/woman/woman/');
+        objLoader.load('woman.obj', function (obj) {
+          playerModel = obj;
 
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const targetScale = maxDim > 0 ? (2.0 / maxDim) : 1.0;
-        playerModel.scale.set(targetScale, targetScale, targetScale);
+          // Texture Map
+          const textureLoader = new THREE.TextureLoader();
+          textureLoader.load('Assets/Models/woman/woman/woman_Packed0_Diffuse.png', function(tex) {
+            playerModel.traverse(function(child) {
+              if (child.isMesh) {
+                child.material.map = tex;
+                child.material.needsUpdate = true;
+              }
+            });
+          });
 
-        const scaledBox = new THREE.Box3().setFromObject(playerModel);
-        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+          const box = new THREE.Box3().setFromObject(playerModel);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
 
-        playerModel.position.x = -scaledCenter.x;
-        baseModelY = -scaledBox.min.y;
-        playerModel.position.y = baseModelY;
-        playerModel.position.z = -scaledCenter.z;
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const targetScale = maxDim > 0 ? (2.0 / maxDim) : 1.0;
+          playerModel.scale.set(targetScale, targetScale, targetScale);
 
-        playerGroup.add(playerModel);
-        document.getElementById('model-status').innerText = '🦴 3D Humanoid Skeleton Rigged!';
-        console.log('Rigged GLB character loaded with 3D bone nodes!');
-      }, undefined, function (error) {
-        console.error('Error loading rigged GLB character model:', error);
+          const scaledBox = new THREE.Box3().setFromObject(playerModel);
+          const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+
+          playerModel.position.x = -scaledCenter.x;
+          baseModelY = -scaledBox.min.y;
+          playerModel.position.y = baseModelY;
+          playerModel.position.z = -scaledCenter.z;
+
+          playerGroup.add(playerModel);
+          document.getElementById('model-status').innerText = '👩 Woman Character Active!';
+        }, undefined, function (error) {
+          console.error('Error loading woman OBJ model:', error);
+        });
       });
 
       playerGroup.position.set(0, groundLevelY, 4);
@@ -409,7 +429,7 @@
         }
       }
 
-      // Player Movement & Natural Gait
+      // Player Movement & Natural Gait Physics
       if (!isTerminalOpen && playerGroup) {
         const speed = keys['c'] ? 0.04 : 0.11;
 
@@ -430,9 +450,9 @@
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
 
           if (playerModel && isGrounded) {
-            playerModel.rotation.z = Math.sin(time * 1.2) * 0.02;
+            playerModel.rotation.z = Math.sin(time * 1.2) * 0.025;
             playerModel.position.y = baseModelY + Math.abs(Math.sin(time * 1.2)) * 0.04;
-            playerModel.rotation.x = 0.04;
+            playerModel.rotation.x = 0.05;
           }
         } else {
           if (playerModel && isGrounded) {
