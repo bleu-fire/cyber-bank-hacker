@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - Mixamo Dwarf Walk Animation</title>
+  <title>CYBER BANK INFILTRATION - Mixamo Dwarf Character Model</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -121,6 +121,8 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 </head>
 <body>
   <div id="cors-banner" class="cors-warning hidden">
@@ -131,11 +133,11 @@
   <div class="hud">
     <div class="hud-box">
       <div class="hud-title">Controls</div>
-      <div class="hud-val" id="obj-text">WASD: Heavy Dwarf Walk | SPACE: Jump | E: Hack</div>
+      <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack Terminal</div>
     </div>
     <div class="hud-box">
-      <div class="hud-title">Active Animation</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">🧔 Mixamo Dwarf Walk Active</div>
+      <div class="hud-title">Player Character</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">🧔 Mixamo Dwarf FBX Model Active</div>
     </div>
   </div>
 
@@ -159,8 +161,8 @@
   <div id="game-canvas"></div>
 
   <script>
-    let scene, camera, renderer, playerGroup, terminalGroup, vaultDoor, cameraSpotlight;
-    let legLeft, legRight, armLeft, armRight, headGroup, torso;
+    let scene, camera, renderer, playerGroup, playerModel, terminalGroup, vaultDoor, cameraSpotlight;
+    let mixer, walkAction;
     let clock = new THREE.Clock();
     let keys = {};
     let isNearTerminal = false;
@@ -173,6 +175,7 @@
     const gravity = -20;
     const jumpPower = 8.5;
     const groundLevelY = 0.0;
+    let baseModelY = 0;
 
     // 3D Object Colliders
     const colliders = [
@@ -220,9 +223,9 @@
       scene.add(cameraSpotlight);
       scene.add(cameraSpotlight.target);
 
-      // Build 3D Room, Dwarf Animated Character & PS1 Computer
+      // Build 3D Room & Load Mixamo FBX Dwarf Character Model
       buildRoom();
-      buildDwarfAnimatedCharacter();
+      loadMixamoDwarfFBXCharacter();
       loadPS1RetroComputerGLB();
 
       // Keyboard Controls
@@ -234,79 +237,55 @@
       animate();
     }
 
-    function buildDwarfAnimatedCharacter() {
+    function loadMixamoDwarfFBXCharacter() {
       playerGroup = new THREE.Group();
       scene.add(playerGroup);
 
-      const hoodieMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.5 });
-      const maskMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2, metalness: 0.1 });
-      const cyanGlowMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+      const fbxLoader = new THREE.FBXLoader();
+      fbxLoader.load('Assets/Models/Dwarf_Walk.fbx', function (fbx) {
+        playerModel = fbx;
 
-      // Torso / Heavy Hoodie Jacket
-      torso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.9, 0.45), hoodieMat);
-      torso.position.y = 1.15;
-      playerGroup.add(torso);
+        playerModel.traverse(function (child) {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            if (child.material) {
+              child.material.side = THREE.DoubleSide;
+            }
+          }
+        });
 
-      // Head & Hood
-      headGroup = new THREE.Group();
-      headGroup.position.set(0, 1.8, 0);
+        // Mixamo FBX scaling
+        const box = new THREE.Box3().setFromObject(playerModel);
+        const size = box.getSize(new THREE.Vector3());
 
-      const hood = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), hoodieMat);
-      headGroup.add(hood);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const targetScale = maxDim > 0 ? (2.0 / maxDim) : 0.012;
+        playerModel.scale.set(targetScale, targetScale, targetScale);
 
-      const mask = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.45, 6), maskMat);
-      mask.rotation.x = Math.PI / 2;
-      mask.position.set(0, -0.05, 0.22);
-      headGroup.add(mask);
+        const scaledBox = new THREE.Box3().setFromObject(playerModel);
+        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
 
-      const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.05), cyanGlowMat);
-      const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.05), cyanGlowMat);
-      eyeL.position.set(-0.09, 0.05, 0.38);
-      eyeR.position.set(0.09, 0.05, 0.38);
-      headGroup.add(eyeL);
-      headGroup.add(eyeR);
+        playerModel.position.x = -scaledCenter.x;
+        baseModelY = -scaledBox.min.y;
+        playerModel.position.y = baseModelY;
+        playerModel.position.z = -scaledCenter.z;
 
-      playerGroup.add(headGroup);
+        // Initialize Mixamo Skeletal Animation Mixer
+        if (fbx.animations && fbx.animations.length > 0) {
+          mixer = new THREE.AnimationMixer(playerModel);
+          walkAction = mixer.clipAction(fbx.animations[0]);
+          walkAction.play();
+          console.log('Mixamo Dwarf FBX character mesh & animation loaded successfully!');
+        }
 
-      // Articulated Arms (Pivots at Shoulders)
-      armLeft = createLimb(hoodieMat, 0.2, 0.6);
-      armRight = createLimb(hoodieMat, 0.2, 0.6);
-      armLeft.position.set(-0.48, 1.4, 0);
-      armRight.position.set(0.48, 1.4, 0);
-      playerGroup.add(armLeft);
-      playerGroup.add(armRight);
-
-      // Articulated Legs with Feet Shoes (Pivots at Hips)
-      legLeft = createLeg(hoodieMat, 0.22, 0.7);
-      legRight = createLeg(hoodieMat, 0.22, 0.7);
-      legLeft.position.set(-0.22, 0.7, 0);
-      legRight.position.set(0.22, 0.7, 0);
-      playerGroup.add(legLeft);
-      playerGroup.add(legRight);
+        playerGroup.add(playerModel);
+        document.getElementById('model-status').innerText = '🧔 Mixamo Dwarf Character Active!';
+      }, undefined, function (error) {
+        console.error('Error loading Mixamo Dwarf FBX character:', error);
+      });
 
       playerGroup.position.set(0, groundLevelY, 4);
-    }
-
-    function createLimb(mat, width, height) {
-      const group = new THREE.Group();
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, width), mat);
-      mesh.position.y = -height / 2;
-      group.add(mesh);
-      return group;
-    }
-
-    function createLeg(mat, width, height) {
-      const group = new THREE.Group();
-      const legMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, width), mat);
-      legMesh.position.y = -height / 2;
-      group.add(legMesh);
-
-      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
-      const shoeMesh = new THREE.Mesh(new THREE.BoxGeometry(width * 1.1, 0.15, width * 1.6), shoeMat);
-      shoeMesh.position.set(0, -height, width * 0.25);
-      group.add(shoeMesh);
-
-      return group;
     }
 
     function loadPS1RetroComputerGLB() {
@@ -432,18 +411,13 @@
       requestAnimationFrame(animate);
 
       const delta = clock.getDelta();
-      const time = Date.now() * 0.01;
+      if (mixer) mixer.update(delta);
 
       // Apply Gravity & Ground Physics
       if (playerGroup) {
         if (!isGrounded) {
           playerGroup.position.y += velocityY * delta;
           velocityY += gravity * delta;
-
-          if (legLeft && legRight) {
-            legLeft.rotation.x = -0.5;
-            legRight.rotation.x = 0.5;
-          }
 
           if (playerGroup.position.y <= groundLevelY) {
             playerGroup.position.y = groundLevelY;
@@ -455,9 +429,10 @@
         }
       }
 
-      // Player Movement & MIXAMO DWARF WALK ANIMATION PHYSICS
+      // Player Movement & Mixamo Animation Speed Control
       if (!isTerminalOpen && playerGroup) {
         const speed = keys['c'] ? 0.04 : 0.11;
+
         let moving = false;
         let moveVec = new THREE.Vector3();
 
@@ -474,28 +449,9 @@
           const angle = Math.atan2(moveVec.x, moveVec.z);
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
 
-          // 🧔 MIXAMO DWARF WALK ANIMATION CYCLE
-          if (isGrounded && legLeft && legRight && armLeft && armRight && torso) {
-            // Heavy wide leg stride
-            legLeft.rotation.x = Math.sin(time * 1.6) * 0.75;
-            legRight.rotation.x = -Math.sin(time * 1.6) * 0.75;
-
-            // Wide arm swing opposition
-            armLeft.rotation.x = -Math.sin(time * 1.6) * 0.65;
-            armRight.rotation.x = Math.sin(time * 1.6) * 0.65;
-
-            // Heavy dwarf chest/body bobbing
-            torso.rotation.x = Math.sin(time * 3.2) * 0.08;
-            playerGroup.position.y = groundLevelY + Math.abs(Math.sin(time * 3.2)) * 0.06;
-          }
+          if (walkAction) walkAction.timeScale = 1.0;
         } else {
-          if (isGrounded && legLeft && legRight && armLeft && armRight && torso) {
-            legLeft.rotation.x = THREE.MathUtils.lerp(legLeft.rotation.x, 0, 0.1);
-            legRight.rotation.x = THREE.MathUtils.lerp(legRight.rotation.x, 0, 0.1);
-            armLeft.rotation.x = THREE.MathUtils.lerp(armLeft.rotation.x, Math.sin(time * 0.5) * 0.05, 0.1);
-            armRight.rotation.x = THREE.MathUtils.lerp(armRight.rotation.x, -Math.sin(time * 0.5) * 0.05, 0.1);
-            torso.rotation.x = THREE.MathUtils.lerp(torso.rotation.x, 0, 0.1);
-          }
+          if (walkAction) walkAction.timeScale = 0.0;
         }
 
         // Crouch scaling
