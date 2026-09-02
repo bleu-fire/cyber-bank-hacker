@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - 3D Cyber Skull Companion</title>
+  <title>CYBER BANK INFILTRATION - 3D Hacker Game</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -134,8 +134,8 @@
       <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack Node</div>
     </div>
     <div class="hud-box">
-      <div class="hud-title">AI Companion</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">💀 3D Cyber Skull Active</div>
+      <div class="hud-title">3D Models</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">Custom 3D Models Active</div>
     </div>
   </div>
 
@@ -159,8 +159,8 @@
   <div id="game-canvas"></div>
 
   <script>
-    let scene, camera, renderer, playerGroup, playerModel, skullGroup, skullEyeL, skullEyeR, terminalGroup, vaultDoor, cameraSpotlight;
-    let mixer, characterBones = {};
+    let scene, camera, renderer, playerGroup, playerModel, terminalGroup, vaultDoor, cameraSpotlight;
+    let mixer;
     let clock = new THREE.Clock();
     let keys = {};
     let isNearTerminal = false;
@@ -221,9 +221,8 @@
       scene.add(cameraSpotlight);
       scene.add(cameraSpotlight.target);
 
-      // Build 3D Room, Cyber Skull, & Load GLB Models
+      // Build 3D Room & Load GLB Models
       buildRoom();
-      buildCyberSkullCompanion();
       loadCustomGLBCharacter();
       loadPS1RetroComputerGLB();
 
@@ -234,39 +233,6 @@
       window.addEventListener('resize', onWindowResize);
 
       animate();
-    }
-
-    function buildCyberSkullCompanion() {
-      skullGroup = new THREE.Group();
-      scene.add(skullGroup);
-
-      const skullMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.2 });
-      const cyanEyeMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-
-      // Skull Cranium
-      const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), skullMat);
-      cranium.scale.set(1.0, 1.1, 1.1);
-      skullGroup.add(cranium);
-
-      // Jaw
-      const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.12, 0.22), skullMat);
-      jaw.position.set(0, -0.2, 0.05);
-      skullGroup.add(jaw);
-
-      // Glowing Cyan Eye Sockets
-      skullEyeL = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), cyanEyeMat);
-      skullEyeR = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), cyanEyeMat);
-      skullEyeL.position.set(-0.1, 0.02, 0.24);
-      skullEyeR.position.set(0.1, 0.02, 0.24);
-      skullGroup.add(skullEyeL);
-      skullGroup.add(skullEyeR);
-
-      // Hover Orbit Light
-      const skullLight = new THREE.PointLight(0x00f0ff, 2, 4);
-      skullLight.position.set(0, 0, 0);
-      skullGroup.add(skullLight);
-
-      skullGroup.position.set(0.8, 2.2, 4);
     }
 
     function loadCustomGLBCharacter() {
@@ -293,14 +259,6 @@
         playerModel.position.y = baseModelY;
         playerModel.position.z = -scaledCenter.z;
 
-        // Traverse Skeletal Armature / Bones
-        playerModel.traverse((node) => {
-          if (node.isBone) {
-            characterBones[node.name] = node;
-            console.log('Bone Node Found:', node.name);
-          }
-        });
-
         if (gltf.animations && gltf.animations.length > 0) {
           mixer = new THREE.AnimationMixer(playerModel);
           const action = mixer.clipAction(gltf.animations[0]);
@@ -308,7 +266,7 @@
         }
 
         playerGroup.add(playerModel);
-        document.getElementById('model-status').innerText = '💀 Cyber Skull Companion Active!';
+        document.getElementById('model-status').innerText = '3D Models Active!';
       }, undefined, function (error) {
         console.error('Error loading custom character model:', error);
       });
@@ -458,7 +416,7 @@
         }
       }
 
-      // Player Movement & Skeletal Bone Control
+      // Player Movement & Collisions
       if (!isTerminalOpen && playerGroup) {
         const speed = keys['c'] ? 0.04 : 0.11;
         let moving = false;
@@ -476,12 +434,6 @@
 
           const angle = Math.atan2(moveVec.x, moveVec.z);
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
-
-          // Skeletal Leg/Chest Bone Animation (if armature present)
-          if (characterBones['Spine'] || characterBones['Chest']) {
-            const spine = characterBones['Spine'] || characterBones['Chest'];
-            spine.rotation.y = Math.sin(time * 1.5) * 0.1;
-          }
 
           if (playerModel && isGrounded) {
             playerModel.rotation.z = Math.sin(time * 1.2) * 0.025;
@@ -506,24 +458,6 @@
         // Player bounds
         playerGroup.position.x = Math.max(-10, Math.min(10, playerGroup.position.x));
         playerGroup.position.z = Math.max(-10, Math.min(10, playerGroup.position.z));
-      }
-
-      // 💀 3D CYBER SKULL ANIMATION & FOLLOW PHYSICS
-      if (skullGroup && playerGroup) {
-        const targetSkullX = playerGroup.position.x + Math.sin(time * 0.8) * 0.8 + 0.6;
-        const targetSkullY = playerGroup.position.y + 2.2 + Math.sin(time * 1.2) * 0.15;
-        const targetSkullZ = playerGroup.position.z + Math.cos(time * 0.8) * 0.5 + 0.3;
-
-        skullGroup.position.x = THREE.MathUtils.lerp(skullGroup.position.x, targetSkullX, 0.08);
-        skullGroup.position.y = THREE.MathUtils.lerp(skullGroup.position.y, targetSkullY, 0.08);
-        skullGroup.position.z = THREE.MathUtils.lerp(skullGroup.position.z, targetSkullZ, 0.08);
-
-        // Skull looks at character or terminal node
-        if (isNearTerminal) {
-          skullGroup.lookAt(-6, 1.5, -6);
-        } else {
-          skullGroup.rotation.y = playerGroup.rotation.y + Math.sin(time) * 0.2;
-        }
       }
 
       // Security Camera Sweep
