@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - Natural Human Walk Animation</title>
+  <title>CYBER BANK INFILTRATION - 3D Object Collision Physics</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -134,8 +134,8 @@
       <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack</div>
     </div>
     <div class="hud-box">
-      <div class="hud-title">Animation Mode</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">🚶 Natural Human Gait Active</div>
+      <div class="hud-title">3D Collision Physics</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">3D Object Collisions Active</div>
     </div>
   </div>
 
@@ -174,6 +174,12 @@
     const jumpPower = 8.5;
     const groundLevelY = 0.0;
     let baseModelY = 0;
+
+    // 3D Object Colliders (Position X, Z, Radius)
+    const colliders = [
+      { x: -6, z: -6, radius: 1.5, name: 'PS1 Computer Terminal' }, // PS1 Terminal
+      { x: 0, z: -11.5, radius: 2.6, isVault: true }                 // Bank Vault Door
+    ];
 
     function init() {
       if (window.location.protocol === 'file:') {
@@ -253,7 +259,6 @@
         playerModel.position.y = baseModelY;
         playerModel.position.z = -scaledCenter.z;
 
-        // If skeletal animations exist in GLTF, play them smoothly
         if (gltf.animations && gltf.animations.length > 0) {
           mixer = new THREE.AnimationMixer(playerModel);
           const action = mixer.clipAction(gltf.animations[0]);
@@ -261,7 +266,7 @@
         }
 
         playerGroup.add(playerModel);
-        document.getElementById('model-status').innerText = '🚶 Natural Human Walk Active';
+        document.getElementById('model-status').innerText = '3D Collisions Active!';
       }, undefined, function (error) {
         console.error('Error loading custom character model:', error);
       });
@@ -370,6 +375,25 @@
       setTimeout(closeTerminal, 1500);
     }
 
+    function check3DCollisions(nextPos) {
+      for (let col of colliders) {
+        if (col.isVault && isVaultUnlocked) continue; // Allow entry when vault is open
+
+        const dx = nextPos.x - col.x;
+        const dz = nextPos.z - col.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        if (dist < col.radius) {
+          // Push player out of object collider
+          const overlap = col.radius - dist;
+          const angle = Math.atan2(dz, dx);
+          nextPos.x += Math.cos(angle) * overlap;
+          nextPos.z += Math.sin(angle) * overlap;
+        }
+      }
+      return nextPos;
+    }
+
     function animate() {
       requestAnimationFrame(animate);
 
@@ -393,7 +417,7 @@
         }
       }
 
-      // Player Movement & NATURAL HUMAN GAIT WALKING ANIMATION
+      // Player Movement & Collisions
       if (!isTerminalOpen && playerGroup) {
         const speed = keys['c'] ? 0.04 : 0.11;
         let moving = false;
@@ -405,21 +429,22 @@
         if (keys['d'] || keys['arrowright']) { moveVec.x += speed; moving = true; }
 
         if (moving) {
-          playerGroup.position.add(moveVec);
+          let nextPos = playerGroup.position.clone().add(moveVec);
+          
+          // Apply 3D Object Collision Check (Solid Computer & Vault Door)
+          nextPos = check3DCollisions(nextPos);
+          playerGroup.position.copy(nextPos);
+
           const angle = Math.atan2(moveVec.x, moveVec.z);
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
 
-          // 🚶 NATURAL HUMAN GAIT WALKING ANIMATION
+          // Natural gait walking animation
           if (playerModel && isGrounded) {
-            // Subtle 2-degree hip/shoulder swing
             playerModel.rotation.z = Math.sin(time * 1.2) * 0.025;
-            // Smooth human step frequency bounce
             playerModel.position.y = baseModelY + Math.abs(Math.sin(time * 1.2)) * 0.04;
-            // Slight natural forward stride lean
             playerModel.rotation.x = 0.05;
           }
         } else {
-          // 🚶 NATURAL HUMAN IDLE BREATHING
           if (playerModel && isGrounded) {
             playerModel.rotation.z = THREE.MathUtils.lerp(playerModel.rotation.z, 0, 0.1);
             playerModel.position.y = THREE.MathUtils.lerp(playerModel.position.y, baseModelY + Math.sin(time * 0.4) * 0.015, 0.1);
@@ -434,7 +459,7 @@
           playerGroup.scale.y = THREE.MathUtils.lerp(playerGroup.scale.y, 1.0, 0.2);
         }
 
-        // Player bounds
+        // Player room bounds
         playerGroup.position.x = Math.max(-10, Math.min(10, playerGroup.position.x));
         playerGroup.position.z = Math.max(-10, Math.min(10, playerGroup.position.z));
       }
