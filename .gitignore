@@ -1,0 +1,22 @@
+# Unity gitignore
+[a-zA-Z0-9]*/
+![a-zA-Z0-9]*/
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+Logs/
+MemoryCaptures/
+UserSettings/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
