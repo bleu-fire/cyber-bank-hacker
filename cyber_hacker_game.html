@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - Mixamo Dwarf Character Model</title>
+  <title>CYBER BANK INFILTRATION - Mixamo Dancing Animation</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -136,8 +136,8 @@
       <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack Terminal</div>
     </div>
     <div class="hud-box">
-      <div class="hud-title">Player Character</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">🧔 Mixamo Dwarf FBX Model Active</div>
+      <div class="hud-title">Primary Animation</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">💃 Mixamo Dancing Active</div>
     </div>
   </div>
 
@@ -162,7 +162,7 @@
 
   <script>
     let scene, camera, renderer, playerGroup, playerModel, terminalGroup, vaultDoor, cameraSpotlight;
-    let mixer, walkAction;
+    let mixer, danceAction;
     let clock = new THREE.Clock();
     let keys = {};
     let isNearTerminal = false;
@@ -223,9 +223,9 @@
       scene.add(cameraSpotlight);
       scene.add(cameraSpotlight.target);
 
-      // Build 3D Room & Load Mixamo FBX Dwarf Character Model
+      // Build 3D Room & Load Mixamo FBX Dancing Character Model
       buildRoom();
-      loadMixamoDwarfFBXCharacter();
+      loadMixamoDancingFBXCharacter();
       loadPS1RetroComputerGLB();
 
       // Keyboard Controls
@@ -237,12 +237,12 @@
       animate();
     }
 
-    function loadMixamoDwarfFBXCharacter() {
+    function loadMixamoDancingFBXCharacter() {
       playerGroup = new THREE.Group();
       scene.add(playerGroup);
 
       const fbxLoader = new THREE.FBXLoader();
-      fbxLoader.load('Assets/Models/Dwarf_Walk.fbx', function (fbx) {
+      fbxLoader.load('Assets/Models/Dancing.fbx', function (fbx) {
         playerModel = fbx;
 
         playerModel.traverse(function (child) {
@@ -271,18 +271,18 @@
         playerModel.position.y = baseModelY;
         playerModel.position.z = -scaledCenter.z;
 
-        // Initialize Mixamo Skeletal Animation Mixer
+        // Initialize Mixamo Skeletal Dancing Animation Mixer (Primary Initial Animation!)
         if (fbx.animations && fbx.animations.length > 0) {
           mixer = new THREE.AnimationMixer(playerModel);
-          walkAction = mixer.clipAction(fbx.animations[0]);
-          walkAction.play();
-          console.log('Mixamo Dwarf FBX character mesh & animation loaded successfully!');
+          danceAction = mixer.clipAction(fbx.animations[0]);
+          danceAction.play();
+          console.log('Mixamo Dancing FBX character mesh & primary animation loaded successfully!');
         }
 
         playerGroup.add(playerModel);
-        document.getElementById('model-status').innerText = '🧔 Mixamo Dwarf Character Active!';
+        document.getElementById('model-status').innerText = '💃 Mixamo Dancing Active!';
       }, undefined, function (error) {
-        console.error('Error loading Mixamo Dwarf FBX character:', error);
+        console.error('Error loading Mixamo Dancing FBX character:', error);
       });
 
       playerGroup.position.set(0, groundLevelY, 4);
@@ -429,7 +429,7 @@
         }
       }
 
-      // Player Movement & Mixamo Animation Speed Control
+      // Player Movement & Mixamo Dancing Animation Speed Control
       if (!isTerminalOpen && playerGroup) {
         const speed = keys['c'] ? 0.04 : 0.11;
 
@@ -448,10 +448,6 @@
 
           const angle = Math.atan2(moveVec.x, moveVec.z);
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
-
-          if (walkAction) walkAction.timeScale = 1.0;
-        } else {
-          if (walkAction) walkAction.timeScale = 0.0;
         }
 
         // Crouch scaling
