@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - Mixamo Rigged Animated Character</title>
+  <title>CYBER BANK INFILTRATION - Guaranteed 3D Character</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -121,8 +121,6 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 </head>
 <body>
   <div id="cors-banner" class="cors-warning hidden">
@@ -137,7 +135,7 @@
     </div>
     <div class="hud-box">
       <div class="hud-title">Player Character</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">🏃 Mixamo Animated FBX Active</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">🎭 Anonymous Cyber Hacker Active</div>
     </div>
   </div>
 
@@ -161,8 +159,8 @@
   <div id="game-canvas"></div>
 
   <script>
-    let scene, camera, renderer, playerGroup, playerModel, terminalGroup, vaultDoor, cameraSpotlight;
-    let mixer, walkAction;
+    let scene, camera, renderer, playerGroup, terminalGroup, vaultDoor, cameraSpotlight;
+    let legLeft, legRight, armLeft, armRight, headGroup;
     let clock = new THREE.Clock();
     let keys = {};
     let isNearTerminal = false;
@@ -175,7 +173,6 @@
     const gravity = -20;
     const jumpPower = 8.5;
     const groundLevelY = 0.0;
-    let baseModelY = 0;
 
     // 3D Object Colliders
     const colliders = [
@@ -223,9 +220,9 @@
       scene.add(cameraSpotlight);
       scene.add(cameraSpotlight.target);
 
-      // Build 3D Room & Load Mixamo FBX Animated Character
+      // Build 3D Room, Guaranteed Rendered 3D Hacker & PS1 Computer
       buildRoom();
-      loadMixamoAnimatedFBXCharacter();
+      buildGuaranteedHackerCharacter();
       loadPS1RetroComputerGLB();
 
       // Keyboard Controls
@@ -237,59 +234,81 @@
       animate();
     }
 
-    function loadMixamoAnimatedFBXCharacter() {
+    function buildGuaranteedHackerCharacter() {
       playerGroup = new THREE.Group();
       scene.add(playerGroup);
 
-      const fbxLoader = new THREE.FBXLoader();
-      fbxLoader.load('Assets/Models/MixamoWomanWalk.fbx', function (fbx) {
-        playerModel = fbx;
+      const hoodieMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.5 });
+      const maskMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2, metalness: 0.1 });
+      const cyanGlowMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
 
-        // Traverse & Apply Solid Materials to all FBX meshes
-        playerModel.traverse(function (child) {
-          if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-            child.material = new THREE.MeshStandardMaterial({
-              color: 0x38bdf8,
-              roughness: 0.4,
-              metalness: 0.2,
-              side: THREE.DoubleSide
-            });
-          }
-        });
+      // Torso / Black Hoodie Jacket
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.4), hoodieMat);
+      torso.position.y = 1.15;
+      playerGroup.add(torso);
 
-        // Precise Bounding Box Normalization
-        const box = new THREE.Box3().setFromObject(playerModel);
-        const size = box.getSize(new THREE.Vector3());
+      // Head & Black Hood with Low-Poly Guy Fawkes Mask
+      headGroup = new THREE.Group();
+      headGroup.position.set(0, 1.8, 0);
 
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const targetScale = maxDim > 0 ? (2.0 / maxDim) : 0.012;
-        playerModel.scale.set(targetScale, targetScale, targetScale);
+      const hood = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), hoodieMat);
+      headGroup.add(hood);
 
-        const scaledBox = new THREE.Box3().setFromObject(playerModel);
-        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+      // Anonymous / Guy Fawkes Low-Poly Mask
+      const mask = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.45, 6), maskMat);
+      mask.rotation.x = Math.PI / 2;
+      mask.position.set(0, -0.05, 0.22);
+      headGroup.add(mask);
 
-        playerModel.position.x = -scaledCenter.x;
-        baseModelY = -scaledBox.min.y;
-        playerModel.position.y = baseModelY;
-        playerModel.position.z = -scaledCenter.z;
+      // Glowing Cyber Eyes
+      const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.05), cyanGlowMat);
+      const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.05), cyanGlowMat);
+      eyeL.position.set(-0.09, 0.05, 0.38);
+      eyeR.position.set(0.09, 0.05, 0.38);
+      headGroup.add(eyeL);
+      headGroup.add(eyeR);
 
-        // Initialize Mixamo Skeletal Animation Mixer
-        if (fbx.animations && fbx.animations.length > 0) {
-          mixer = new THREE.AnimationMixer(playerModel);
-          walkAction = mixer.clipAction(fbx.animations[0]);
-          walkAction.play();
-          console.log('Mixamo Walking FBX mesh & animation loaded successfully!');
-        }
+      playerGroup.add(headGroup);
 
-        playerGroup.add(playerModel);
-        document.getElementById('model-status').innerText = '🏃 Mixamo Animated Character Active!';
-      }, undefined, function (error) {
-        console.error('Error loading Mixamo FBX character:', error);
-      });
+      // Articulated Arms (Pivots at Shoulders)
+      armLeft = createLimb(hoodieMat, 0.18, 0.6);
+      armRight = createLimb(hoodieMat, 0.18, 0.6);
+      armLeft.position.set(-0.45, 1.4, 0);
+      armRight.position.set(0.45, 1.4, 0);
+      playerGroup.add(armLeft);
+      playerGroup.add(armRight);
+
+      // Articulated Legs with Feet Shoes (Pivots at Hips)
+      legLeft = createLeg(hoodieMat, 0.2, 0.7);
+      legRight = createLeg(hoodieMat, 0.2, 0.7);
+      legLeft.position.set(-0.2, 0.7, 0);
+      legRight.position.set(0.2, 0.7, 0);
+      playerGroup.add(legLeft);
+      playerGroup.add(legRight);
 
       playerGroup.position.set(0, groundLevelY, 4);
+    }
+
+    function createLimb(mat, width, height) {
+      const group = new THREE.Group();
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, width), mat);
+      mesh.position.y = -height / 2;
+      group.add(mesh);
+      return group;
+    }
+
+    function createLeg(mat, width, height) {
+      const group = new THREE.Group();
+      const legMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, width), mat);
+      legMesh.position.y = -height / 2;
+      group.add(legMesh);
+
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+      const shoeMesh = new THREE.Mesh(new THREE.BoxGeometry(width * 1.1, 0.15, width * 1.6), shoeMat);
+      shoeMesh.position.set(0, -height, width * 0.25);
+      group.add(shoeMesh);
+
+      return group;
     }
 
     function loadPS1RetroComputerGLB() {
@@ -415,13 +434,18 @@
       requestAnimationFrame(animate);
 
       const delta = clock.getDelta();
-      if (mixer) mixer.update(delta);
+      const time = Date.now() * 0.01;
 
       // Apply Gravity & Ground Physics
       if (playerGroup) {
         if (!isGrounded) {
           playerGroup.position.y += velocityY * delta;
           velocityY += gravity * delta;
+
+          if (legLeft && legRight) {
+            legLeft.rotation.x = -0.5;
+            legRight.rotation.x = 0.5;
+          }
 
           if (playerGroup.position.y <= groundLevelY) {
             playerGroup.position.y = groundLevelY;
@@ -433,10 +457,9 @@
         }
       }
 
-      // Player Movement & Mixamo Animation Speed Control
+      // Player Movement & Real Moving Arms/Legs Walking Physics
       if (!isTerminalOpen && playerGroup) {
         const speed = keys['c'] ? 0.04 : 0.11;
-
         let moving = false;
         let moveVec = new THREE.Vector3();
 
@@ -453,9 +476,21 @@
           const angle = Math.atan2(moveVec.x, moveVec.z);
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
 
-          if (walkAction) walkAction.timeScale = 1.0;
+          // Moving Legs and Arms gait
+          if (isGrounded && legLeft && legRight && armLeft && armRight) {
+            legLeft.rotation.x = Math.sin(time * 1.5) * 0.6;
+            legRight.rotation.x = -Math.sin(time * 1.5) * 0.6;
+            armLeft.rotation.x = -Math.sin(time * 1.5) * 0.5;
+            armRight.rotation.x = Math.sin(time * 1.5) * 0.5;
+            playerGroup.position.y = groundLevelY + Math.abs(Math.sin(time * 3)) * 0.04;
+          }
         } else {
-          if (walkAction) walkAction.timeScale = 0.0;
+          if (isGrounded && legLeft && legRight && armLeft && armRight) {
+            legLeft.rotation.x = THREE.MathUtils.lerp(legLeft.rotation.x, 0, 0.1);
+            legRight.rotation.x = THREE.MathUtils.lerp(legRight.rotation.x, 0, 0.1);
+            armLeft.rotation.x = THREE.MathUtils.lerp(armLeft.rotation.x, Math.sin(time * 0.5) * 0.05, 0.1);
+            armRight.rotation.x = THREE.MathUtils.lerp(armRight.rotation.x, -Math.sin(time * 0.5) * 0.05, 0.1);
+          }
         }
 
         // Crouch scaling
