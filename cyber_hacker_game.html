@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - Mixamo Typing Animation</title>
+  <title>CYBER BANK INFILTRATION - Mixamo Walking Animation</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -159,18 +159,18 @@
   <div class="hud">
     <div class="hud-box">
       <div class="hud-title">Controls</div>
-      <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack Terminal</div>
+      <div class="hud-val" id="obj-text">WASD: Mixamo Walk | SPACE: Jump | E: Hack Terminal</div>
     </div>
     <div class="hud-box">
       <div class="hud-title">Active Animation Clip</div>
-      <div class="hud-val" style="color: #00ff66;" id="clip-status">Clip: Idle Motion</div>
+      <div class="hud-val" style="color: #00ff66;" id="clip-status">Clip: Mixamo Walk</div>
     </div>
   </div>
 
   <!-- Interactive Animation Clip Selector Bar -->
   <div class="anim-bar">
-    <button class="anim-btn active" id="btn-idle" onclick="selectClip('idle')">[1] Idle</button>
-    <button class="anim-btn" id="btn-walk" onclick="selectClip('walk')">[2] Walk</button>
+    <button class="anim-btn" id="btn-idle" onclick="selectClip('idle')">[1] Idle</button>
+    <button class="anim-btn active" id="btn-walk" onclick="selectClip('walk')">[2] Mixamo Walk</button>
     <button class="anim-btn" id="btn-run" onclick="selectClip('run')">[3] Run Sprint</button>
     <button class="anim-btn" id="btn-jump" onclick="selectClip('jump')">[4] Jump Leap</button>
     <button class="anim-btn" id="btn-hack" onclick="selectClip('hack')">[5] Mixamo Typing</button>
@@ -197,7 +197,7 @@
 
   <script>
     let scene, camera, renderer, playerGroup, playerModel, terminalGroup, vaultDoor, cameraSpotlight;
-    let mixer, animActions = {}, currentActiveClip = 'idle';
+    let mixer, animActions = {}, currentActiveClip = 'walk';
     let clock = new THREE.Clock();
     let keys = {};
     let isNearTerminal = false;
@@ -279,7 +279,8 @@
       const btnMap = { idle: 'btn-idle', walk: 'btn-walk', run: 'btn-run', jump: 'btn-jump', hack: 'btn-hack' };
       if (btnMap[clipName]) document.getElementById(btnMap[clipName]).classList.add('active');
 
-      document.getElementById('clip-status').innerText = `Clip: ${clipName === 'hack' ? 'MIXAMO TYPING' : clipName.toUpperCase()}`;
+      const labelMap = { idle: 'IDLE MOTION', walk: 'MIXAMO WALK', run: 'RUN SPRINT', jump: 'JUMP LEAP', hack: 'MIXAMO TYPING' };
+      document.getElementById('clip-status').innerText = `Clip: ${labelMap[clipName] || clipName.toUpperCase()}`;
 
       if (clipName === 'jump' && isGrounded && !isTerminalOpen) {
         velocityY = jumpPower;
@@ -329,7 +330,7 @@
         }
 
         playerGroup.add(playerModel);
-        selectClip('idle');
+        selectClip('walk');
       }, undefined, function (error) {
         console.error('Error loading custom character model:', error);
       });
@@ -511,7 +512,7 @@
             if (currentActiveClip !== 'walk') selectClip('walk');
           }
 
-          // Natural gait stride
+          // Mixamo Walking Stride
           if (playerModel && isGrounded && !animActions['walk']) {
             const freq = isSprinting ? 1.8 : 1.2;
             playerModel.rotation.z = Math.sin(time * freq) * 0.025;
@@ -522,10 +523,9 @@
           if (currentActiveClip === 'walk' || currentActiveClip === 'run') {
             selectClip('idle');
           }
-          // Mixamo Typing Stance at terminal
           if (currentActiveClip === 'hack' && playerModel) {
             playerModel.rotation.x = 0.1;
-            playerModel.position.y = baseModelY + Math.sin(time * 3) * 0.01; // Rapid typing vibration
+            playerModel.position.y = baseModelY + Math.sin(time * 3) * 0.01;
           } else if (playerModel && isGrounded && !animActions['idle']) {
             playerModel.rotation.z = THREE.MathUtils.lerp(playerModel.rotation.z, 0, 0.1);
             playerModel.position.y = THREE.MathUtils.lerp(playerModel.position.y, baseModelY + Math.sin(time * 0.4) * 0.015, 0.1);
