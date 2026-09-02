@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER BANK INFILTRATION - Rock & Roll Swagger Animation</title>
+  <title>CYBER BANK INFILTRATION - Natural Human Walk Animation</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -131,11 +131,11 @@
   <div class="hud">
     <div class="hud-box">
       <div class="hud-title">Controls</div>
-      <div class="hud-val" id="obj-text">WASD: Rock & Roll Walk | SPACE: Flip Jump | E: Hack</div>
+      <div class="hud-val" id="obj-text">WASD: Walk | SPACE: Jump | E: Hack</div>
     </div>
     <div class="hud-box">
       <div class="hud-title">Animation Mode</div>
-      <div class="hud-val" style="color: #00ff66;" id="model-status">🎸 Rock & Roll Swagger Active</div>
+      <div class="hud-val" style="color: #00ff66;" id="model-status">🚶 Natural Human Gait Active</div>
     </div>
   </div>
 
@@ -170,8 +170,8 @@
     // Jump & Physics
     let isGrounded = true;
     let velocityY = 0;
-    const gravity = -22;
-    const jumpPower = 9.5;
+    const gravity = -20;
+    const jumpPower = 8.5;
     const groundLevelY = 0.0;
     let baseModelY = 0;
 
@@ -253,6 +253,7 @@
         playerModel.position.y = baseModelY;
         playerModel.position.z = -scaledCenter.z;
 
+        // If skeletal animations exist in GLTF, play them smoothly
         if (gltf.animations && gltf.animations.length > 0) {
           mixer = new THREE.AnimationMixer(playerModel);
           const action = mixer.clipAction(gltf.animations[0]);
@@ -260,7 +261,7 @@
         }
 
         playerGroup.add(playerModel);
-        document.getElementById('model-status').innerText = '🎸 Rock & Roll Swagger Active!';
+        document.getElementById('model-status').innerText = '🚶 Natural Human Walk Active';
       }, undefined, function (error) {
         console.error('Error loading custom character model:', error);
       });
@@ -373,7 +374,7 @@
       requestAnimationFrame(animate);
 
       const delta = clock.getDelta();
-      const time = Date.now() * 0.01;
+      const time = Date.now() * 0.008;
       if (mixer) mixer.update(delta);
 
       // Apply Gravity & Ground Physics
@@ -382,26 +383,19 @@
           playerGroup.position.y += velocityY * delta;
           velocityY += gravity * delta;
 
-          // Mid-air Rock & Roll flip spin!
-          if (playerModel) {
-            playerModel.rotation.x += 0.2;
-          }
-
           if (playerGroup.position.y <= groundLevelY) {
             playerGroup.position.y = groundLevelY;
             velocityY = 0;
             isGrounded = true;
-            if (playerModel) playerModel.rotation.x = 0;
           }
         } else {
           playerGroup.position.y = groundLevelY;
-          if (playerModel) playerModel.rotation.x = 0;
         }
       }
 
-      // Player Movement & Rock & Roll Swagger Walk Animation
+      // Player Movement & NATURAL HUMAN GAIT WALKING ANIMATION
       if (!isTerminalOpen && playerGroup) {
-        const speed = keys['c'] ? 0.05 : 0.14;
+        const speed = keys['c'] ? 0.04 : 0.11;
         let moving = false;
         let moveVec = new THREE.Vector3();
 
@@ -415,20 +409,20 @@
           const angle = Math.atan2(moveVec.x, moveVec.z);
           playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, angle, 0.18);
 
-          // 🎸 ROCK & ROLL SWAGGER WALK ANIMATION
+          // 🚶 NATURAL HUMAN GAIT WALKING ANIMATION
           if (playerModel && isGrounded) {
-            // Side-to-side confident shoulder rock
-            playerModel.rotation.z = Math.sin(time * 1.4) * 0.18;
-            // Up & down heavy stride bounce
-            playerModel.position.y = baseModelY + Math.abs(Math.sin(time * 1.4)) * 0.15;
-            // Rocking forward/backward tilt
-            playerModel.rotation.x = Math.cos(time * 1.4) * 0.08;
+            // Subtle 2-degree hip/shoulder swing
+            playerModel.rotation.z = Math.sin(time * 1.2) * 0.025;
+            // Smooth human step frequency bounce
+            playerModel.position.y = baseModelY + Math.abs(Math.sin(time * 1.2)) * 0.04;
+            // Slight natural forward stride lean
+            playerModel.rotation.x = 0.05;
           }
         } else {
-          // 🎸 ROCK & ROLL IDLE BOUNCE & HEAD BOB
+          // 🚶 NATURAL HUMAN IDLE BREATHING
           if (playerModel && isGrounded) {
-            playerModel.rotation.z = THREE.MathUtils.lerp(playerModel.rotation.z, Math.sin(time * 0.5) * 0.04, 0.1);
-            playerModel.position.y = THREE.MathUtils.lerp(playerModel.position.y, baseModelY + Math.sin(time * 0.8) * 0.05, 0.1);
+            playerModel.rotation.z = THREE.MathUtils.lerp(playerModel.rotation.z, 0, 0.1);
+            playerModel.position.y = THREE.MathUtils.lerp(playerModel.position.y, baseModelY + Math.sin(time * 0.4) * 0.015, 0.1);
             playerModel.rotation.x = THREE.MathUtils.lerp(playerModel.rotation.x, 0, 0.1);
           }
         }
